@@ -1,10 +1,10 @@
 package server
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -18,16 +18,9 @@ type response struct {
 }
 
 func newAdguardServer(server *httptest.Server) AdguardServer {
-
-	hostPort := strings.Split(server.Listener.Addr().String(), ":")
-
-	port, _ := strconv.Atoi(hostPort[1])
-
 	return AdguardServer{
-		Host: hostPort[0],
-		Port: port,
+		Url: "http://" + server.Listener.Addr().String(),
 	}
-
 }
 func TestGivenValidJsonResponseWhenSendResquestThenReturnValidStruct(test *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -49,11 +42,13 @@ func TestGivenValidJsonResponseWhenSendResquestThenReturnValidStruct(test *testi
 
 func TestGivenAdguardTokenWhenSendResquestThenAdguardTokenIsInHeader(test *testing.T) {
 
-	expectedToken := "1234"
+	expectedUsername := "admin"
+	expectedPassword := "1234"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		adguardToken := r.Header.Get("Authorization")
-		if adguardToken != fmt.Sprintf("Basic %s", expectedToken) {
-			test.Errorf("\nExpected: %s\nActual: %s", expectedToken, adguardToken)
+		encoded := base64.StdEncoding.EncodeToString([]byte(expectedUsername + ":" + expectedPassword))
+		header := r.Header.Get("Authorization")
+		if header != fmt.Sprintf("Basic %s", encoded) {
+			test.Errorf("\nExpected: %s\nActual: %s", encoded, header)
 		}
 		fmt.Fprint(w, validJSON)
 
@@ -61,7 +56,8 @@ func TestGivenAdguardTokenWhenSendResquestThenAdguardTokenIsInHeader(test *testi
 	defer server.Close()
 
 	AdguardServer := newAdguardServer(server)
-	AdguardServer.Token = expectedToken
+	AdguardServer.Username = expectedUsername
+	AdguardServer.Password = expectedPassword
 
 	var response response
 	err := AdguardServer.SendRequest("api", &response)

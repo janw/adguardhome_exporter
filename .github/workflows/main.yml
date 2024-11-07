@@ -24,12 +24,12 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         go_version: [1.22]
     steps:
-      - name: checkout  
+      - name: checkout
         uses: actions/checkout@v4
       - name: Set up Go ${{ matrix.go_version }}
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go_version }} 
+          go-version: ${{ matrix.go_version }}
       - name: go tests
         run: |
           echo "getting dependencies...".
@@ -39,7 +39,7 @@ jobs:
           go build -v -o ${{ github.workspace }}/dist/adguardhome_exporter main.go
       - name: upload artifacts
         uses: actions/upload-artifact@v4
-        with: 
+        with:
           name: adguardhome_exporter-${{ matrix.os }}
           path: ${{ github.workspace }}/dist/**/*
           retention-days: 10
