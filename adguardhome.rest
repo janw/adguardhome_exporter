@@ -110,4 +110,3 @@ GET {{base_url}}/querylog/config
 Accept: application/json
 Authorization: Basic {{token}}
 ###
-
