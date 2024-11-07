@@ -1,5 +1,6 @@
 # adguardhome_exporter
-[Adguard home](https://github.com/AdguardTeam/AdGuardHome) prometheus exporter
+
+[AdGuard Home](https://github.com/AdguardTeam/AdGuardHome) prometheus exporter
 
 ![Golang CI](https://github.com/sfragata/adguardhome_exporter/workflows/Golang%20CI/badge.svg)
 
@@ -7,7 +8,7 @@
 
 ### Mac
 
-```
+```sh
 brew tap sfragata/tap
 
 brew install sfragata/tap/adguardhome_exporter
@@ -19,19 +20,23 @@ get latest release [here](https://github.com/sfragata/adguardhome_exporter/relea
 
 ## Usage
 
-```
-adguardhome_exporter - Prometheus exporter for Adguard home
+```plain
+adguardhome_exporter - Prometheus exporter for AdGuard Home
 
   Flags:
        --version          Displays the program version string.
     -h --help             Displays help with available flag, subcommand, and positional value parameters.
-    -H --host             Adguard home address (default: 127.0.0.1)
-    -p --port             Adguard home port (default: 80)
-    -t --token            Adguard home token (if ADGUARD_HOME_TOKEN env variable is set, don't need to pass it). username:password in base64 format
-    -l --listen-address   Adguard home exporter metrics port (default: 9311)
-```    
-## Output
+    -u --url              AdGuard Home URL (env var: ADGUARD_HOME_URL) (default: http://127.0.0.1)
+    -U --username         AdGuard Home username (env var: ADGUARD_HOME_USERNAME)
+    -P --password         AdGuard Home password (env var: ADGUARD_HOME_PASSWORD)
+    -l --listen-address   Exporter metrics port (default: 9311)
+       --tls-no-verify    Disable TLS validation (default: false)
+       --timeout          Request timeout in seconds (default: 2.00)
 ```
+
+## Output
+
+```plain
 # HELP adguard_dns_query_types show dns query types
 # TYPE adguard_dns_query_types gauge
 adguard_dns_query_types{type="A"} 3182

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"time"
@@ -22,8 +24,9 @@ var (
 	commit  string
 )
 
-func main() {
+const prog_name = "adguardhome_exporter"
 
+func main() {
 	info := fmt.Sprintf(
 		"%s\nDate: %s\nCommit: %s\nOS: %s\nArch: %s",
 		version,
@@ -33,45 +36,70 @@ func main() {
 		runtime.GOARCH,
 	)
 
-	flaggy.SetName("adguardhome_exporter")
-	flaggy.SetDescription("Prometheus exporter for Adguard home")
+	flaggy.SetName(prog_name)
+	flaggy.SetDescription("Prometheus exporter for AdGuard Home")
 	flaggy.SetVersion(info)
 
-	var adguardHost = "127.0.0.1"
-	flaggy.String(&adguardHost, "H", "host", "Adguard home address")
+	var adguardUrl = "http://127.0.0.1"
+	if envvalue, ok := os.LookupEnv("ADGUARD_HOME_URL"); ok {
+		if len(envvalue) > 0 {
+			adguardUrl = envvalue
+		}
+	}
+	flaggy.String(&adguardUrl, "u", "url", "AdGuard Home URL (env var: ADGUARD_HOME_URL)")
 
-	var adguardPort = 80
-	flaggy.Int(&adguardPort, "p", "port", "Adguard home port")
+	var adguardUsername = os.Getenv("ADGUARD_HOME_USERNAME")
+	flaggy.String(&adguardUsername, "U", "username", "AdGuard Home username (env var: ADGUARD_HOME_USERNAME)")
 
-	var adguardToken = os.Getenv("ADGUARD_HOME_TOKEN") // username:password in base64
-	flaggy.String(&adguardToken, "t", "token", "Adguard home token (if ADGUARD_HOME_TOKEN env variable is set, don't need to pass it). username:password in base64 format")
+	var adguardPassword = os.Getenv("ADGUARD_HOME_PASSWORD")
+	flaggy.String(&adguardPassword, "P", "password", "AdGuard Home password (env var: ADGUARD_HOME_PASSWORD)")
 
 	var metricsPort = "9311"
-	flaggy.String(&metricsPort, "l", "listen-address", "Adguard home exporter metrics port")
+	flaggy.String(&metricsPort, "l", "listen-address", "Exporter metrics port")
+
+	var adguardTlsNoVerify = false
+	flaggy.Bool(&adguardTlsNoVerify, "", "tls-no-verify", "Disable TLS validation")
+
+	var adguardTimeout = 2.0
+	flaggy.Float64(&adguardTimeout, "", "timeout", "Request timeout in seconds")
 
 	flaggy.Parse()
 
+	u, err := url.Parse(adguardUrl)
+	if err != nil || u.Host == "" || (u.Scheme != "" && u.Scheme != "http" && u.Scheme != "https") {
+		log.Fatalf("Invalid url: %v", adguardUrl)
+	}
+	if u.Scheme == "" {
+		u.Scheme = "http"
+	}
+	adguardUrl = u.String()
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: adguardTlsNoVerify},
+	}
+
 	client := &http.Client{
-		Timeout: server.HTTPTimeout * time.Second,
+		Transport: tr,
+		Timeout:   time.Duration(adguardTimeout) * time.Second,
 	}
 
 	AdguardServer := server.AdguardServer{
-		Host:       adguardHost,
-		Port:       adguardPort,
-		Token:      adguardToken,
+		Url:        adguardUrl,
+		Username:   adguardUsername,
+		Password:   adguardPassword,
 		HTTPClient: *client,
 	}
 
-	err := prometheus.Register(collector.NewAdguardCollector(AdguardServer, version))
+	err = prometheus.Register(collector.NewAdguardCollector(AdguardServer, version))
 	if err != nil {
-		log.Fatalf("Can't register collectors: %v", err)
+		log.Fatalf("Failed to register collectors: %v", err)
 	}
 
 	http.Handle("/metrics", promhttp.Handler())
-	log.Printf("starting adguardhome_export [:%s]", metricsPort)
+	log.Printf("Starting %s [:%s] for AdGuard Home at %s", prog_name, metricsPort, adguardUrl)
 	err = http.ListenAndServe(":"+metricsPort, nil)
 	if err != nil {
-		log.Fatalf("Can't start server %s", metricsPort)
+		log.Fatalf("Failed to start server: %v", err)
 	}
 
 }

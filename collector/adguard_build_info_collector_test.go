@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -36,14 +35,7 @@ func TestAdguardBuildInfoCollectorCollect(test *testing.T) {
 }
 
 func newAdguardServer(serverTest *httptest.Server) server.AdguardServer {
-
-	hostPort := strings.Split(serverTest.Listener.Addr().String(), ":")
-
-	port, _ := strconv.Atoi(hostPort[1])
-
 	return server.AdguardServer{
-		Host: hostPort[0],
-		Port: port,
+		Url: "http://" + serverTest.Listener.Addr().String(),
 	}
-
 }
